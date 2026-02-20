@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(but amend yw b3 --json --status-after)"
+    ]
+  }
+}
