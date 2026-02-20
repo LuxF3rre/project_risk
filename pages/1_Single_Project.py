@@ -9,19 +9,62 @@ from project_risk.monte_carlo import compute_result, simulate_single
 st.set_page_config(page_title="Single Project", layout="wide")
 st.title("Single Project Estimate")
 
+st.markdown(
+    """
+Estimate the duration of a single project or activity. Provide three
+values — the **best case**, **most likely**, and **worst case** duration —
+and the simulation will show you the full range of possible outcomes.
+"""
+)
+
 # --- Inputs ---
 col1, col2, col3 = st.columns(3)
 with col1:
-    optimistic = st.number_input("Optimistic", min_value=0.0, value=5.0, step=0.5)
+    optimistic = st.number_input("Optimistic", min_value=0.0, value=0.0, step=0.5)
 with col2:
-    most_likely = st.number_input("Most Likely", min_value=0.0, value=10.0, step=0.5)
+    most_likely = st.number_input("Most Likely", min_value=0.0, value=0.0, step=0.5)
 with col3:
-    pessimistic = st.number_input("Pessimistic", min_value=0.0, value=20.0, step=0.5)
+    pessimistic = st.number_input("Pessimistic", min_value=0.0, value=0.0, step=0.5)
+
+if st.button("Load Example"):
+    st.session_state["sp_optimistic"] = 5.0
+    st.session_state["sp_most_likely"] = 10.0
+    st.session_state["sp_pessimistic"] = 20.0
+    st.rerun()
+
+# Sync session state back to inputs on rerun
+for key, field in [
+    ("sp_optimistic", "Optimistic"),
+    ("sp_most_likely", "Most Likely"),
+    ("sp_pessimistic", "Pessimistic"),
+]:
+    if key in st.session_state:
+        val = st.session_state.pop(key)
+        if field == "Optimistic":
+            optimistic = val
+        elif field == "Most Likely":
+            most_likely = val
+        else:
+            pessimistic = val
 
 # --- Sidebar config ---
 st.sidebar.header("Simulation Settings")
+st.sidebar.markdown(
+    """
+**Iterations** — How many simulated scenarios to run. More iterations
+give smoother, more reliable results.
+
+**Random Seed** — A number that makes results reproducible. Using the
+same seed always produces the same output. Set to 0 for a different
+result each time.
+
+**PERT Lambda** — Controls how strongly the simulation favors the
+"most likely" value. Higher values produce a tighter curve around the
+most likely estimate; lower values spread the results wider.
+"""
+)
 iterations = st.sidebar.number_input(
-    "Iterations", min_value=100, max_value=1_000_000, value=10_000, step=1000
+    "Iterations", min_value=100, max_value=10_000, value=10_000, step=1000
 )
 seed_input = st.sidebar.number_input(
     "Random Seed (0 = none)", min_value=0, max_value=2**31 - 1, value=0
@@ -46,6 +89,11 @@ if st.button("Run Simulation", type="primary"):
         iterations=int(iterations), seed=seed, pert_lambda=pert_lambda
     )
     result = simulate_single(estimate=estimate, config=config)
+    st.session_state["sp_result"] = result
+
+# --- Display results from session state ---
+if "sp_result" in st.session_state:
+    result = st.session_state["sp_result"]
 
     # --- Visualizations ---
     tab_hist, tab_cdf = st.tabs(["Histogram", "CDF"])

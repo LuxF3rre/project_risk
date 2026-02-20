@@ -16,9 +16,19 @@ from project_risk.monte_carlo import compute_result, simulate_task_dag
 st.set_page_config(page_title="Task DAG", layout="wide")
 st.title("Task Dependency Graph")
 
+st.markdown(
+    """
+Model your project as a network of tasks with **dependencies** — some
+tasks can't start until others finish, and some can run in parallel.
+The simulation finds the **critical path** (the longest chain of dependent
+tasks) in each scenario and shows you how it drives the overall duration.
+"""
+)
+
 # --- Task editor ---
 st.subheader("Tasks")
-default_tasks = pd.DataFrame(
+
+EXAMPLE_TASKS = pd.DataFrame(
     {
         "Task": ["Design", "Backend", "Frontend", "Integration", "Testing"],
         "Optimistic": [2.0, 5.0, 4.0, 1.0, 2.0],
@@ -27,8 +37,33 @@ default_tasks = pd.DataFrame(
     }
 )
 
+EXAMPLE_DEPS: dict[str, list[str]] = {
+    "Backend": ["Design"],
+    "Frontend": ["Design"],
+    "Integration": ["Backend", "Frontend"],
+    "Testing": ["Integration"],
+}
+
+EMPTY_TASKS = pd.DataFrame(
+    {
+        "Task": pd.Series(dtype="str"),
+        "Optimistic": pd.Series(dtype="float"),
+        "Most Likely": pd.Series(dtype="float"),
+        "Pessimistic": pd.Series(dtype="float"),
+    }
+)
+
+if "dag_data" not in st.session_state:
+    st.session_state["dag_data"] = EMPTY_TASKS
+
+if st.button("Load Example"):
+    st.session_state["dag_data"] = EXAMPLE_TASKS.copy()
+    st.session_state["dag_example_deps"] = True
+    st.session_state.pop("dag_result", None)
+    st.rerun()
+
 edited_tasks = st.data_editor(
-    default_tasks,
+    st.session_state["dag_data"],
     num_rows="dynamic",
     width="stretch",
     key="task_editor",
@@ -51,13 +86,18 @@ task_names = [
 st.subheader("Dependencies")
 st.caption("For each task, select which tasks must complete before it can start.")
 
+# Pre-populate defaults from example if just loaded
+load_example_deps = st.session_state.pop("dag_example_deps", False)
+
 dependency_map: dict[str, list[str]] = {}
 for name in task_names:
     possible_predecessors = [t for t in task_names if t != name]
     if possible_predecessors:
+        default = EXAMPLE_DEPS.get(name, []) if load_example_deps else []
         selected = st.multiselect(
             f'"{name}" depends on:',
             options=possible_predecessors,
+            default=[d for d in default if d in possible_predecessors],
             key=f"dep_{name}",
         )
         if selected:
@@ -79,8 +119,22 @@ if task_names:
 
 # --- Sidebar config ---
 st.sidebar.header("Simulation Settings")
+st.sidebar.markdown(
+    """
+**Iterations** — How many simulated scenarios to run. More iterations
+give smoother, more reliable results.
+
+**Random Seed** — A number that makes results reproducible. Using the
+same seed always produces the same output. Set to 0 for a different
+result each time.
+
+**PERT Lambda** — Controls how strongly the simulation favors the
+"most likely" value. Higher values produce a tighter curve around the
+most likely estimate; lower values spread the results wider.
+"""
+)
 iterations = st.sidebar.number_input(
-    "Iterations", min_value=100, max_value=1_000_000, value=10_000, step=1000
+    "Iterations", min_value=100, max_value=10_000, value=10_000, step=1000
 )
 seed_input = st.sidebar.number_input(
     "Random Seed (0 = none)", min_value=0, max_value=2**31 - 1, value=0
@@ -91,7 +145,6 @@ seed = int(seed_input) if seed_input > 0 else None
 
 # --- Run ---
 if st.button("Run Simulation", type="primary"):
-    # Build task objects
     tasks: list[Task] = []
     for _, row in edited_tasks.iterrows():
         name = str(row["Task"]).strip()
@@ -113,7 +166,6 @@ if st.button("Run Simulation", type="primary"):
         st.warning("Add at least one task.")
         st.stop()
 
-    # Build dependencies
     dependencies: list[TaskDependency] = []
     task_id_set = {t.task_id for t in tasks}
     for successor, predecessors in dependency_map.items():
@@ -135,15 +187,25 @@ if st.button("Run Simulation", type="primary"):
         st.error(f"Simulation failed: {e}")
         st.stop()
 
+    st.session_state["dag_result"] = result
+    st.session_state["dag_tasks"] = tasks
+    st.session_state["dag_dependencies"] = dependencies
+    st.session_state["dag_dep_tuples"] = dep_tuples
+    st.session_state["dag_lambda"] = pert_lambda
+
+# --- Display results from session state ---
+if "dag_result" in st.session_state:
+    result = st.session_state["dag_result"]
+    tasks = st.session_state["dag_tasks"]
+    dependencies = st.session_state["dag_dependencies"]
+    saved_dep_tuples = st.session_state["dag_dep_tuples"]
+    lam = st.session_state["dag_lambda"]
+
     # --- Critical path ---
     task_ids = [t.task_id for t in tasks]
     pert_means = [
-        (
-            t.estimate.optimistic
-            + pert_lambda * t.estimate.most_likely
-            + t.estimate.pessimistic
-        )
-        / (pert_lambda + 2)
+        (t.estimate.optimistic + lam * t.estimate.most_likely + t.estimate.pessimistic)
+        / (lam + 2)
         for t in tasks
     ]
     try:
@@ -159,13 +221,13 @@ if st.button("Run Simulation", type="primary"):
     st.subheader("DAG with Critical Path")
     result_dot = build_dag_dot(
         task_ids=task_ids,
-        dependencies=dep_tuples,
+        dependencies=saved_dep_tuples,
         critical_path=critical_path,
     )
     st.graphviz_chart(result_dot)
 
     if critical_path:
-        st.info(f"Critical path: {' → '.join(critical_path)}")
+        st.info(f"Critical path: {' \u2192 '.join(critical_path)}")
 
     # --- Charts ---
     tab_hist, tab_cdf = st.tabs(["Histogram", "CDF"])
@@ -188,7 +250,10 @@ if st.button("Run Simulation", type="primary"):
     custom_result = compute_result(
         samples=result.samples, percentile_values=(float(custom_pct),)
     )
-    st.metric(f"P{custom_pct}", f"{custom_result.percentiles[0].value:.2f}")
+    st.metric(
+        f"P{custom_pct}",
+        f"{custom_result.percentiles[0].value:.2f}",
+    )
 
     # --- Per-task stats ---
     st.subheader("Per-Task Estimates")

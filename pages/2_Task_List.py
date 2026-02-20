@@ -10,11 +10,19 @@ from project_risk.monte_carlo import compute_result, simulate_task_list
 st.set_page_config(page_title="Task List", layout="wide")
 st.title("Task List (Sequential)")
 
+st.markdown(
+    """
+Break your project into individual tasks that run **one after another**.
+Give each task its own best-case, most-likely, and worst-case duration.
+The simulation adds up all task durations in each scenario, showing you
+how individual uncertainty compounds into overall project risk.
+"""
+)
+
 # --- Task editor ---
 st.subheader("Tasks")
-st.caption("Add tasks with three-point estimates. Tasks run sequentially.")
 
-default_data = pd.DataFrame(
+EXAMPLE_DATA = pd.DataFrame(
     {
         "Task": ["Design", "Development", "Testing"],
         "Optimistic": [2.0, 5.0, 1.0],
@@ -23,8 +31,25 @@ default_data = pd.DataFrame(
     }
 )
 
+EMPTY_DATA = pd.DataFrame(
+    {
+        "Task": pd.Series(dtype="str"),
+        "Optimistic": pd.Series(dtype="float"),
+        "Most Likely": pd.Series(dtype="float"),
+        "Pessimistic": pd.Series(dtype="float"),
+    }
+)
+
+if "tl_data" not in st.session_state:
+    st.session_state["tl_data"] = EMPTY_DATA
+
+if st.button("Load Example"):
+    st.session_state["tl_data"] = EXAMPLE_DATA.copy()
+    st.session_state.pop("tl_result", None)
+    st.rerun()
+
 edited_df = st.data_editor(
-    default_data,
+    st.session_state["tl_data"],
     num_rows="dynamic",
     width="stretch",
     column_config={
@@ -37,8 +62,22 @@ edited_df = st.data_editor(
 
 # --- Sidebar config ---
 st.sidebar.header("Simulation Settings")
+st.sidebar.markdown(
+    """
+**Iterations** — How many simulated scenarios to run. More iterations
+give smoother, more reliable results.
+
+**Random Seed** — A number that makes results reproducible. Using the
+same seed always produces the same output. Set to 0 for a different
+result each time.
+
+**PERT Lambda** — Controls how strongly the simulation favors the
+"most likely" value. Higher values produce a tighter curve around the
+most likely estimate; lower values spread the results wider.
+"""
+)
 iterations = st.sidebar.number_input(
-    "Iterations", min_value=100, max_value=1_000_000, value=10_000, step=1000
+    "Iterations", min_value=100, max_value=10_000, value=10_000, step=1000
 )
 seed_input = st.sidebar.number_input(
     "Random Seed (0 = none)", min_value=0, max_value=2**31 - 1, value=0
@@ -49,7 +88,6 @@ seed = int(seed_input) if seed_input > 0 else None
 
 # --- Run ---
 if st.button("Run Simulation", type="primary"):
-    # Build task objects
     tasks: list[Task] = []
     for _, row in edited_df.iterrows():
         name = str(row["Task"]).strip()
@@ -75,6 +113,15 @@ if st.button("Run Simulation", type="primary"):
         iterations=int(iterations), seed=seed, pert_lambda=pert_lambda
     )
     result = simulate_task_list(tasks=tasks, config=config)
+    st.session_state["tl_result"] = result
+    st.session_state["tl_tasks"] = tasks
+    st.session_state["tl_lambda"] = pert_lambda
+
+# --- Display results from session state ---
+if "tl_result" in st.session_state:
+    result = st.session_state["tl_result"]
+    tasks = st.session_state["tl_tasks"]
+    lam = st.session_state["tl_lambda"]
 
     # --- Linear DAG visualization ---
     st.subheader("Task Flow")
@@ -83,7 +130,7 @@ if st.button("Run Simulation", type="primary"):
     dot = build_dag_dot(
         task_ids=task_ids,
         dependencies=deps,
-        critical_path=task_ids,  # All tasks are on the critical path
+        critical_path=task_ids,
     )
     st.graphviz_chart(dot)
 
@@ -108,7 +155,10 @@ if st.button("Run Simulation", type="primary"):
     custom_result = compute_result(
         samples=result.samples, percentile_values=(float(custom_pct),)
     )
-    st.metric(f"P{custom_pct}", f"{custom_result.percentiles[0].value:.2f}")
+    st.metric(
+        f"P{custom_pct}",
+        f"{custom_result.percentiles[0].value:.2f}",
+    )
 
     # --- Per-task stats ---
     st.subheader("Per-Task Estimates")
@@ -120,10 +170,10 @@ if st.button("Run Simulation", type="primary"):
         "PERT Mean": [
             (
                 t.estimate.optimistic
-                + pert_lambda * t.estimate.most_likely
+                + lam * t.estimate.most_likely
                 + t.estimate.pessimistic
             )
-            / (pert_lambda + 2)
+            / (lam + 2)
             for t in tasks
         ],
     }
