@@ -18,34 +18,25 @@ and the simulation will show you the full range of possible outcomes.
 )
 
 # --- Inputs ---
-col1, col2, col3 = st.columns(3)
-with col1:
-    optimistic = st.number_input("Optimistic", min_value=0.0, value=0.0, step=0.5)
-with col2:
-    most_likely = st.number_input("Most Likely", min_value=0.0, value=0.0, step=0.5)
-with col3:
-    pessimistic = st.number_input("Pessimistic", min_value=0.0, value=0.0, step=0.5)
-
 if st.button("Load Example"):
     st.session_state["sp_optimistic"] = 5.0
     st.session_state["sp_most_likely"] = 10.0
     st.session_state["sp_pessimistic"] = 20.0
     st.rerun()
 
-# Sync session state back to inputs on rerun
-for key, field in [
-    ("sp_optimistic", "Optimistic"),
-    ("sp_most_likely", "Most Likely"),
-    ("sp_pessimistic", "Pessimistic"),
-]:
-    if key in st.session_state:
-        val = st.session_state.pop(key)
-        if field == "Optimistic":
-            optimistic = val
-        elif field == "Most Likely":
-            most_likely = val
-        else:
-            pessimistic = val
+col1, col2, col3 = st.columns(3)
+with col1:
+    optimistic = st.number_input(
+        "Optimistic", min_value=0.0, value=0.0, step=0.5, key="sp_optimistic"
+    )
+with col2:
+    most_likely = st.number_input(
+        "Most Likely", min_value=0.0, value=0.0, step=0.5, key="sp_most_likely"
+    )
+with col3:
+    pessimistic = st.number_input(
+        "Pessimistic", min_value=0.0, value=0.0, step=0.5, key="sp_pessimistic"
+    )
 
 # --- Sidebar config ---
 st.sidebar.header("Simulation Settings")
