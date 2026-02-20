@@ -56,18 +56,16 @@ EMPTY_TASKS = pd.DataFrame(
 if "dag_data" not in st.session_state:
     st.session_state["dag_data"] = EMPTY_TASKS
 
-btn_col1, btn_col2, _ = st.columns([1, 1, 4])
-with btn_col1:
-    if st.button("Load Example"):
-        st.session_state["dag_data"] = EXAMPLE_TASKS.copy()
-        st.session_state["dag_example_deps"] = True
-        st.session_state.pop("dag_result", None)
-        st.rerun()
-with btn_col2:
-    if st.button("Clear Data"):
-        st.session_state["dag_data"] = EMPTY_TASKS.copy()
-        st.session_state.pop("dag_result", None)
-        st.rerun()
+load_col, clear_col, *_ = st.columns([2, 2, 6], gap="small")
+if load_col.button("Load Example"):
+    st.session_state["dag_data"] = EXAMPLE_TASKS.copy()
+    st.session_state["dag_example_deps"] = True
+    st.session_state.pop("dag_result", None)
+    st.rerun()
+if clear_col.button("Clear Data"):
+    st.session_state["dag_data"] = EMPTY_TASKS.copy()
+    st.session_state.pop("dag_result", None)
+    st.rerun()
 
 edited_tasks = st.data_editor(
     st.session_state["dag_data"],
