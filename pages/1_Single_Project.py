@@ -18,11 +18,20 @@ and the simulation will show you the full range of possible outcomes.
 )
 
 # --- Inputs ---
-if st.button("Load Example"):
-    st.session_state["sp_optimistic"] = 5.0
-    st.session_state["sp_most_likely"] = 10.0
-    st.session_state["sp_pessimistic"] = 20.0
-    st.rerun()
+btn_col1, btn_col2, _ = st.columns([1, 1, 4])
+with btn_col1:
+    if st.button("Load Example"):
+        st.session_state["sp_optimistic"] = 5.0
+        st.session_state["sp_most_likely"] = 10.0
+        st.session_state["sp_pessimistic"] = 20.0
+        st.rerun()
+with btn_col2:
+    if st.button("Clear Data"):
+        st.session_state["sp_optimistic"] = 0.0
+        st.session_state["sp_most_likely"] = 0.0
+        st.session_state["sp_pessimistic"] = 0.0
+        st.session_state.pop("sp_result", None)
+        st.rerun()
 
 col1, col2, col3 = st.columns(3)
 with col1:

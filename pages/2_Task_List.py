@@ -43,10 +43,17 @@ EMPTY_DATA = pd.DataFrame(
 if "tl_data" not in st.session_state:
     st.session_state["tl_data"] = EMPTY_DATA
 
-if st.button("Load Example"):
-    st.session_state["tl_data"] = EXAMPLE_DATA.copy()
-    st.session_state.pop("tl_result", None)
-    st.rerun()
+btn_col1, btn_col2, _ = st.columns([1, 1, 4])
+with btn_col1:
+    if st.button("Load Example"):
+        st.session_state["tl_data"] = EXAMPLE_DATA.copy()
+        st.session_state.pop("tl_result", None)
+        st.rerun()
+with btn_col2:
+    if st.button("Clear Data"):
+        st.session_state["tl_data"] = EMPTY_DATA.copy()
+        st.session_state.pop("tl_result", None)
+        st.rerun()
 
 edited_df = st.data_editor(
     st.session_state["tl_data"],
