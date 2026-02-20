@@ -201,6 +201,21 @@ if "dag_result" in st.session_state:
     saved_dep_tuples = st.session_state["dag_dep_tuples"]
     lam = st.session_state["dag_lambda"]
 
+    # --- Plain-language interpretation ---
+    st.subheader("What does this mean?")
+    lines = []
+    for p in result.percentiles:
+        pct = int(p.percentile)
+        lines.append(
+            f"- There is a **{pct}% chance** the project will finish "
+            f"in **{p.value:.1f} or less**."
+        )
+    lines.append(
+        f"\nOn average, the project duration (driven by the critical "
+        f"path) is expected to be about **{result.mean:.1f}**."
+    )
+    st.markdown("\n".join(lines))
+
     # --- Critical path ---
     task_ids = [t.task_id for t in tasks]
     pert_means = [

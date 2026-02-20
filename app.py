@@ -12,11 +12,14 @@ st.title("Home")
 
 st.markdown(
     """
-This app helps you **estimate how long a project will really take** by
-accounting for uncertainty in your time estimates. Instead of giving a
-single number, you provide a range — the best case, the most likely case,
-and the worst case — and the app runs thousands of simulated scenarios to
-show you the full picture of possible outcomes.
+This app helps you **understand and quantify project risks** — the
+uncertainties that affect whether a project finishes on time, within
+budget, or meets its targets. Instead of relying on single-point
+estimates, you explore the full range of possible outcomes so you can
+make better-informed decisions.
+
+Different types of risk call for different analysis methods. The app
+is organized into modules, each focused on a specific technique.
 """
 )
 
@@ -24,6 +27,9 @@ st.header("PERT + Monte Carlo Simulation")
 
 st.markdown(
     """
+The first module focuses on **schedule risk** — how long will the
+project really take?
+
 **PERT** (Program Evaluation and Review Technique) is a way to turn your
 three-point estimate (best case, most likely, worst case) into a realistic
 probability curve. It gives more weight to the "most likely" value while
@@ -34,13 +40,9 @@ thousands of times. Each roll picks a random duration from the curve. After
 all the rolls, you get a distribution that answers questions like *"What's
 the chance we finish in under 20 days?"* or *"What duration covers 80% of
 scenarios?"*.
-"""
-)
 
-st.header("Use Cases")
+**Use cases:**
 
-st.markdown(
-    """
 1. **Single Project** — You have one overall estimate for a project.
    Enter your best-case, most likely, and worst-case durations to see the
    range of possible outcomes.

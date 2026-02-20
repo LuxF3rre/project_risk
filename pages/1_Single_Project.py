@@ -95,6 +95,20 @@ if st.button("Run Simulation", type="primary"):
 if "sp_result" in st.session_state:
     result = st.session_state["sp_result"]
 
+    # --- Plain-language interpretation ---
+    st.subheader("What does this mean?")
+    lines = []
+    for p in result.percentiles:
+        pct = int(p.percentile)
+        lines.append(
+            f"- There is a **{pct}% chance** the project will finish "
+            f"in **{p.value:.1f} or less**."
+        )
+    lines.append(
+        f"\nOn average, the project is expected to take about **{result.mean:.1f}**."
+    )
+    st.markdown("\n".join(lines))
+
     # --- Visualizations ---
     tab_hist, tab_cdf = st.tabs(["Histogram", "CDF"])
     with tab_hist:

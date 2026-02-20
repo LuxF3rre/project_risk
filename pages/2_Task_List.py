@@ -123,6 +123,21 @@ if "tl_result" in st.session_state:
     tasks = st.session_state["tl_tasks"]
     lam = st.session_state["tl_lambda"]
 
+    # --- Plain-language interpretation ---
+    st.subheader("What does this mean?")
+    lines = []
+    for p in result.percentiles:
+        pct = int(p.percentile)
+        lines.append(
+            f"- There is a **{pct}% chance** the project will finish "
+            f"in **{p.value:.1f} or less**."
+        )
+    lines.append(
+        f"\nOn average, the total project duration is expected to be "
+        f"about **{result.mean:.1f}**."
+    )
+    st.markdown("\n".join(lines))
+
     # --- Linear DAG visualization ---
     st.subheader("Task Flow")
     task_ids = [t.task_id for t in tasks]
