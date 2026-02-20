@@ -6,6 +6,7 @@ import streamlit as st
 from project_risk.charts import build_cdf, build_dag_dot, build_histogram
 from project_risk.models import PertEstimate, SimulationConfig, Task
 from project_risk.monte_carlo import compute_result, simulate_task_list
+from project_risk.ui import sidebar_config
 
 st.set_page_config(page_title="Task List", layout="wide")
 st.title("Task List (Sequential)")
@@ -45,10 +46,12 @@ load_col, clear_col, *_ = st.columns([2, 2, 6], gap="small")
 if load_col.button("Load Example"):
     st.session_state["tl_data"] = EXAMPLE_DATA.copy()
     st.session_state.pop("tl_result", None)
+    st.session_state.pop("tl_run_inputs", None)
     st.rerun()
 if clear_col.button("Clear Data"):
     st.session_state["tl_data"] = EMPTY_DATA.copy()
     st.session_state.pop("tl_result", None)
+    st.session_state.pop("tl_run_inputs", None)
     st.rerun()
 
 st.subheader("Tasks")
@@ -66,30 +69,7 @@ edited_df = st.data_editor(
 )
 
 # --- Sidebar config ---
-st.sidebar.header("Simulation Settings")
-st.sidebar.markdown(
-    """
-**Iterations** — How many simulated scenarios to run. More iterations
-give smoother, more reliable results.
-
-**Random Seed** — A number that makes results reproducible. Using the
-same seed always produces the same output. Set to 0 for a different
-result each time.
-
-**PERT Lambda** — Controls how strongly the simulation favors the
-"most likely" value. Higher values produce a tighter curve around the
-most likely estimate; lower values spread the results wider.
-"""
-)
-iterations = st.sidebar.number_input(
-    "Iterations", min_value=100, max_value=10_000, value=10_000, step=1000
-)
-seed_input = st.sidebar.number_input(
-    "Random Seed (0 = none)", min_value=0, max_value=2**31 - 1, value=0
-)
-pert_lambda = st.sidebar.slider("PERT Lambda", min_value=1.0, max_value=10.0, value=4.0)
-
-seed = int(seed_input) if seed_input > 0 else None
+iterations, seed, pert_lambda = sidebar_config()
 
 # --- Run ---
 if st.button("Run Simulation", type="primary"):
@@ -114,19 +94,53 @@ if st.button("Run Simulation", type="primary"):
         st.warning("Add at least one task.")
         st.stop()
 
-    config = SimulationConfig(
-        iterations=int(iterations), seed=seed, pert_lambda=pert_lambda
-    )
+    config = SimulationConfig(iterations=iterations, seed=seed, pert_lambda=pert_lambda)
     result = simulate_task_list(tasks=tasks, config=config)
     st.session_state["tl_result"] = result
     st.session_state["tl_tasks"] = tasks
     st.session_state["tl_lambda"] = pert_lambda
+    st.session_state["tl_run_inputs"] = (
+        edited_df.to_csv(index=False),
+        iterations,
+        seed,
+        pert_lambda,
+    )
 
 # --- Display results from session state ---
 if "tl_result" in st.session_state:
     result = st.session_state["tl_result"]
     tasks = st.session_state["tl_tasks"]
     lam = st.session_state["tl_lambda"]
+
+    # --- Stale results warning ---
+    current_inputs = (
+        edited_df.to_csv(index=False),
+        iterations,
+        seed,
+        pert_lambda,
+    )
+    if st.session_state.get("tl_run_inputs") != current_inputs:
+        st.warning(
+            "Inputs have changed since last run. Click **Run Simulation** to update."
+        )
+
+    # --- Confidence deadline ---
+    st.subheader("Confidence Deadline")
+    confidence = st.slider(
+        "How confident do you need to be?",
+        min_value=1,
+        max_value=99,
+        value=80,
+        format="%d%%",
+    )
+    deadline = compute_result(
+        samples=result.samples, percentile_values=(float(confidence),)
+    )
+    st.metric(
+        f"P{confidence} Duration",
+        f"{deadline.percentiles[0].value:.2f}",
+        help=f"{confidence}% chance the project finishes within this duration.",
+    )
 
     # --- Plain-language interpretation ---
     st.subheader("What does this mean?")
@@ -155,7 +169,7 @@ if "tl_result" in st.session_state:
     st.graphviz_chart(dot)
 
     # --- Charts ---
-    tab_hist, tab_cdf = st.tabs(["Histogram", "CDF"])
+    tab_hist, tab_cdf = st.tabs(["Histogram", "Cumulative Probability"])
     with tab_hist:
         st.altair_chart(build_histogram(result=result), width="stretch")
     with tab_cdf:
@@ -168,17 +182,6 @@ if "tl_result" in st.session_state:
         "Duration": [round(p.value, 2) for p in result.percentiles],
     }
     st.table(pct_data)
-
-    # --- Custom percentile ---
-    st.subheader("Custom Percentile")
-    custom_pct = st.slider("Percentile", min_value=1, max_value=99, value=80)
-    custom_result = compute_result(
-        samples=result.samples, percentile_values=(float(custom_pct),)
-    )
-    st.metric(
-        f"P{custom_pct}",
-        f"{custom_result.percentiles[0].value:.2f}",
-    )
 
     # --- Per-task stats ---
     st.subheader("Per-Task Estimates")

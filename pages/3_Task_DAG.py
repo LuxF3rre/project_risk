@@ -12,13 +12,14 @@ from project_risk.models import (
     TaskDependency,
 )
 from project_risk.monte_carlo import compute_result, simulate_task_dag
+from project_risk.ui import sidebar_config
 
 st.set_page_config(page_title="Task DAG", layout="wide")
 st.title("Task Dependency Graph")
 
 st.markdown(
     """
-Model your project as a network of tasks with **dependencies and duration** —
+Model your project as a network of tasks with **dependencies** —
 some tasks can't start until others finish, and some can run in parallel.
 The simulation finds the **critical path** (the longest chain of dependent
 tasks) in each scenario and shows you how it drives the overall duration.
@@ -35,12 +36,12 @@ EXAMPLE_TASKS = pd.DataFrame(
     }
 )
 
-EXAMPLE_DEPS: dict[str, list[str]] = {
-    "Backend": ["Design"],
-    "Frontend": ["Design"],
-    "Integration": ["Backend", "Frontend"],
-    "Testing": ["Integration"],
-}
+EXAMPLE_DEPS = pd.DataFrame(
+    {
+        "Predecessor": ["Design", "Design", "Backend", "Frontend", "Integration"],
+        "Successor": ["Backend", "Frontend", "Integration", "Integration", "Testing"],
+    }
+)
 
 EMPTY_TASKS = pd.DataFrame(
     {
@@ -51,18 +52,31 @@ EMPTY_TASKS = pd.DataFrame(
     }
 )
 
+EMPTY_DEPS = pd.DataFrame(
+    {
+        "Predecessor": pd.Series(dtype="str"),
+        "Successor": pd.Series(dtype="str"),
+    }
+)
+
 if "dag_data" not in st.session_state:
     st.session_state["dag_data"] = EMPTY_TASKS
+
+if "dag_deps_data" not in st.session_state:
+    st.session_state["dag_deps_data"] = EMPTY_DEPS
 
 load_col, clear_col, *_ = st.columns([2, 2, 6], gap="small")
 if load_col.button("Load Example"):
     st.session_state["dag_data"] = EXAMPLE_TASKS.copy()
-    st.session_state["dag_example_deps"] = True
+    st.session_state["dag_deps_data"] = EXAMPLE_DEPS.copy()
     st.session_state.pop("dag_result", None)
+    st.session_state.pop("dag_run_inputs", None)
     st.rerun()
 if clear_col.button("Clear Data"):
     st.session_state["dag_data"] = EMPTY_TASKS.copy()
+    st.session_state["dag_deps_data"] = EMPTY_DEPS.copy()
     st.session_state.pop("dag_result", None)
+    st.session_state.pop("dag_run_inputs", None)
     st.rerun()
 
 st.subheader("Tasks")
@@ -80,40 +94,48 @@ edited_tasks = st.data_editor(
     },
 )
 
-# Build task list for dependency editor
+# Build task name list for dependency editor
 task_names = [
     str(row["Task"]).strip()
     for _, row in edited_tasks.iterrows()
     if str(row["Task"]).strip()
 ]
 
-# --- Dependency editor ---
+# --- Dependency editor (adjacency list) ---
 st.subheader("Dependencies")
-st.caption("For each task, select which tasks must complete before it can start.")
+st.caption(
+    "Each row defines one dependency: the successor cannot start "
+    "until the predecessor finishes."
+)
 
-# Pre-populate defaults from example if just loaded
-load_example_deps = st.session_state.pop("dag_example_deps", False)
+edited_deps = st.data_editor(
+    st.session_state["dag_deps_data"],
+    num_rows="dynamic",
+    width="stretch",
+    key="dep_editor",
+    column_config={
+        "Predecessor": st.column_config.SelectboxColumn(
+            "Predecessor (must finish first)",
+            options=task_names,
+            required=True,
+        ),
+        "Successor": st.column_config.SelectboxColumn(
+            "Successor (starts after)",
+            options=task_names,
+            required=True,
+        ),
+    },
+)
 
-dependency_map: dict[str, list[str]] = {}
-for name in task_names:
-    possible_predecessors = [t for t in task_names if t != name]
-    if possible_predecessors:
-        default = EXAMPLE_DEPS.get(name, []) if load_example_deps else []
-        selected = st.multiselect(
-            f'"{name}" depends on:',
-            options=possible_predecessors,
-            default=[d for d in default if d in possible_predecessors],
-            key=f"dep_{name}",
-        )
-        if selected:
-            dependency_map[name] = selected
+# Build dependency tuples from the edge list
+dep_tuples: list[tuple[str, str]] = []
+for _, row in edited_deps.iterrows():
+    pred = str(row.get("Predecessor", "")).strip()
+    succ = str(row.get("Successor", "")).strip()
+    if pred and succ and pred not in ("", "nan") and succ not in ("", "nan"):
+        dep_tuples.append((pred, succ))
 
 # --- Live DAG preview ---
-dep_tuples: list[tuple[str, str]] = []
-for successor, predecessors in dependency_map.items():
-    for pred in predecessors:
-        dep_tuples.append((pred, successor))
-
 if task_names:
     st.subheader("DAG Preview")
     preview_dot = build_dag_dot(
@@ -123,30 +145,7 @@ if task_names:
     st.graphviz_chart(preview_dot)
 
 # --- Sidebar config ---
-st.sidebar.header("Simulation Settings")
-st.sidebar.markdown(
-    """
-**Iterations** — How many simulated scenarios to run. More iterations
-give smoother, more reliable results.
-
-**Random Seed** — A number that makes results reproducible. Using the
-same seed always produces the same output. Set to 0 for a different
-result each time.
-
-**PERT Lambda** — Controls how strongly the simulation favors the
-"most likely" value. Higher values produce a tighter curve around the
-most likely estimate; lower values spread the results wider.
-"""
-)
-iterations = st.sidebar.number_input(
-    "Iterations", min_value=100, max_value=10_000, value=10_000, step=1000
-)
-seed_input = st.sidebar.number_input(
-    "Random Seed (0 = none)", min_value=0, max_value=2**31 - 1, value=0
-)
-pert_lambda = st.sidebar.slider("PERT Lambda", min_value=1.0, max_value=10.0, value=4.0)
-
-seed = int(seed_input) if seed_input > 0 else None
+iterations, seed, pert_lambda = sidebar_config()
 
 # --- Run ---
 if st.button("Run Simulation", type="primary"):
@@ -173,16 +172,11 @@ if st.button("Run Simulation", type="primary"):
 
     dependencies: list[TaskDependency] = []
     task_id_set = {t.task_id for t in tasks}
-    for successor, predecessors in dependency_map.items():
-        for pred in predecessors:
-            if pred in task_id_set and successor in task_id_set:
-                dependencies.append(
-                    TaskDependency(predecessor=pred, successor=successor)
-                )
+    for pred, succ in dep_tuples:
+        if pred in task_id_set and succ in task_id_set:
+            dependencies.append(TaskDependency(predecessor=pred, successor=succ))
 
-    config = SimulationConfig(
-        iterations=int(iterations), seed=seed, pert_lambda=pert_lambda
-    )
+    config = SimulationConfig(iterations=iterations, seed=seed, pert_lambda=pert_lambda)
 
     try:
         result = simulate_task_dag(
@@ -197,6 +191,13 @@ if st.button("Run Simulation", type="primary"):
     st.session_state["dag_dependencies"] = dependencies
     st.session_state["dag_dep_tuples"] = dep_tuples
     st.session_state["dag_lambda"] = pert_lambda
+    st.session_state["dag_run_inputs"] = (
+        edited_tasks.to_csv(index=False),
+        edited_deps.to_csv(index=False),
+        iterations,
+        seed,
+        pert_lambda,
+    )
 
 # --- Display results from session state ---
 if "dag_result" in st.session_state:
@@ -205,6 +206,37 @@ if "dag_result" in st.session_state:
     dependencies = st.session_state["dag_dependencies"]
     saved_dep_tuples = st.session_state["dag_dep_tuples"]
     lam = st.session_state["dag_lambda"]
+
+    # --- Stale results warning ---
+    current_inputs = (
+        edited_tasks.to_csv(index=False),
+        edited_deps.to_csv(index=False),
+        iterations,
+        seed,
+        pert_lambda,
+    )
+    if st.session_state.get("dag_run_inputs") != current_inputs:
+        st.warning(
+            "Inputs have changed since last run. Click **Run Simulation** to update."
+        )
+
+    # --- Confidence deadline ---
+    st.subheader("Confidence Deadline")
+    confidence = st.slider(
+        "How confident do you need to be?",
+        min_value=1,
+        max_value=99,
+        value=80,
+        format="%d%%",
+    )
+    deadline = compute_result(
+        samples=result.samples, percentile_values=(float(confidence),)
+    )
+    st.metric(
+        f"P{confidence} Duration",
+        f"{deadline.percentiles[0].value:.2f}",
+        help=f"{confidence}% chance the project finishes within this duration.",
+    )
 
     # --- Plain-language interpretation ---
     st.subheader("What does this mean?")
@@ -250,7 +282,7 @@ if "dag_result" in st.session_state:
         st.info(f"Critical path: {' \u2192 '.join(critical_path)}")
 
     # --- Charts ---
-    tab_hist, tab_cdf = st.tabs(["Histogram", "CDF"])
+    tab_hist, tab_cdf = st.tabs(["Histogram", "Cumulative Probability"])
     with tab_hist:
         st.altair_chart(build_histogram(result=result), width="stretch")
     with tab_cdf:
@@ -263,17 +295,6 @@ if "dag_result" in st.session_state:
         "Duration": [round(p.value, 2) for p in result.percentiles],
     }
     st.table(pct_data)
-
-    # --- Custom percentile ---
-    st.subheader("Custom Percentile")
-    custom_pct = st.slider("Percentile", min_value=1, max_value=99, value=80)
-    custom_result = compute_result(
-        samples=result.samples, percentile_values=(float(custom_pct),)
-    )
-    st.metric(
-        f"P{custom_pct}",
-        f"{custom_result.percentiles[0].value:.2f}",
-    )
 
     # --- Per-task stats ---
     st.subheader("Per-Task Estimates")
