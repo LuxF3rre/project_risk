@@ -30,7 +30,7 @@ default_tasks = pd.DataFrame(
 edited_tasks = st.data_editor(
     default_tasks,
     num_rows="dynamic",
-    use_container_width=True,
+    width="stretch",
     key="task_editor",
     column_config={
         "Task": st.column_config.TextColumn("Task Name", required=True),
@@ -170,9 +170,9 @@ if st.button("Run Simulation", type="primary"):
     # --- Charts ---
     tab_hist, tab_cdf = st.tabs(["Histogram", "CDF"])
     with tab_hist:
-        st.altair_chart(build_histogram(result=result), use_container_width=True)
+        st.altair_chart(build_histogram(result=result), width="stretch")
     with tab_cdf:
-        st.altair_chart(build_cdf(result=result), use_container_width=True)
+        st.altair_chart(build_cdf(result=result), width="stretch")
 
     # --- Percentile table ---
     st.subheader("Percentiles")
