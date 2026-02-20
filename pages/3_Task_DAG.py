@@ -18,16 +18,14 @@ st.title("Task Dependency Graph")
 
 st.markdown(
     """
-Model your project as a network of tasks with **dependencies** — some
-tasks can't start until others finish, and some can run in parallel.
+Model your project as a network of tasks with **dependencies and duration** —
+some tasks can't start until others finish, and some can run in parallel.
 The simulation finds the **critical path** (the longest chain of dependent
 tasks) in each scenario and shows you how it drives the overall duration.
 """
 )
 
 # --- Task editor ---
-st.subheader("Tasks")
-
 EXAMPLE_TASKS = pd.DataFrame(
     {
         "Task": ["Design", "Backend", "Frontend", "Integration", "Testing"],
@@ -66,6 +64,8 @@ if clear_col.button("Clear Data"):
     st.session_state["dag_data"] = EMPTY_TASKS.copy()
     st.session_state.pop("dag_result", None)
     st.rerun()
+
+st.subheader("Tasks")
 
 edited_tasks = st.data_editor(
     st.session_state["dag_data"],

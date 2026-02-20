@@ -20,8 +20,6 @@ how individual uncertainty compounds into overall project risk.
 )
 
 # --- Task editor ---
-st.subheader("Tasks")
-
 EXAMPLE_DATA = pd.DataFrame(
     {
         "Task": ["Design", "Development", "Testing"],
@@ -52,6 +50,8 @@ if clear_col.button("Clear Data"):
     st.session_state["tl_data"] = EMPTY_DATA.copy()
     st.session_state.pop("tl_result", None)
     st.rerun()
+
+st.subheader("Tasks")
 
 edited_df = st.data_editor(
     st.session_state["tl_data"],
