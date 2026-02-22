@@ -42,13 +42,13 @@ EMPTY_DATA = pd.DataFrame(
 if "tl_data" not in st.session_state:
     st.session_state["tl_data"] = EMPTY_DATA
 
-load_col, clear_col, *_ = st.columns([2, 2, 6], gap="small")
-if load_col.button("Load Example"):
+load_col, clear_col, *_ = st.columns([3, 2, 5], gap="small")
+if load_col.button("Load Example", use_container_width=True):
     st.session_state["tl_data"] = EXAMPLE_DATA.copy()
     st.session_state.pop("tl_result", None)
     st.session_state.pop("tl_run_inputs", None)
     st.rerun()
-if clear_col.button("Clear Data"):
+if clear_col.button("Clear Data", use_container_width=True):
     st.session_state["tl_data"] = EMPTY_DATA.copy()
     st.session_state.pop("tl_result", None)
     st.session_state.pop("tl_run_inputs", None)
