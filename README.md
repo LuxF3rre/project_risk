@@ -28,7 +28,7 @@ of possible outcomes.
 
 ```bash
 uv sync
-uv run streamlit run Home.py
+uv run streamlit run src/Home.py
 ```
 
 ## Tech Stack
@@ -42,18 +42,19 @@ uv run streamlit run Home.py
 
 ```text
 project_risk/
-├── Home.py                      # Landing page
-├── pages/
-│   ├── 1_Single_Project.py      # Single three-point estimate
-│   ├── 2_Task_List.py           # Sequential tasks
-│   └── 3_Task_DAG.py            # Task dependency graph
-├── src/project_risk/
-│   ├── models.py                # Domain models
-│   ├── pert.py                  # PERT distribution sampling
-│   ├── monte_carlo.py           # Simulation orchestration
-│   ├── dag.py                   # Graph algorithms
-│   ├── charts.py                # Altair charts & Graphviz
-│   └── ui.py                    # Shared sidebar config
+├── src/
+│   ├── Home.py                  # Landing page
+│   ├── pages/
+│   │   ├── 1_Single_Project.py  # Single three-point estimate
+│   │   ├── 2_Task_List.py       # Sequential tasks
+│   │   └── 3_Task_DAG.py        # Task dependency graph
+│   └── project_risk/
+│       ├── models.py            # Domain models
+│       ├── pert.py              # PERT distribution sampling
+│       ├── monte_carlo.py       # Simulation orchestration
+│       ├── dag.py               # Graph algorithms
+│       ├── charts.py            # Altair charts & Graphviz
+│       └── ui.py                # Shared sidebar config
 └── tests/                       # pytest suite
 ```
 
