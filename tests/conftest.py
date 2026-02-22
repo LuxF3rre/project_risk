@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from project_risk.models import PertEstimate, Task, TaskDependency
+from project_risk.models import PertEstimate, Task, TaskDependency, TaskTransition
 
 
 @pytest.fixture
@@ -80,4 +80,55 @@ def diamond_deps() -> list[TaskDependency]:
         TaskDependency(predecessor="A", successor="C"),
         TaskDependency(predecessor="B", successor="D"),
         TaskDependency(predecessor="C", successor="D"),
+    ]
+
+
+@pytest.fixture
+def workflow_tasks() -> list[Task]:
+    """Software development workflow tasks."""
+    return [
+        Task(
+            task_id="Requirements",
+            estimate=PertEstimate(optimistic=2, most_likely=4, pessimistic=8),
+        ),
+        Task(
+            task_id="Development",
+            estimate=PertEstimate(optimistic=5, most_likely=10, pessimistic=20),
+        ),
+        Task(
+            task_id="Code Review",
+            estimate=PertEstimate(optimistic=1, most_likely=2, pessimistic=4),
+        ),
+        Task(
+            task_id="Testing",
+            estimate=PertEstimate(optimistic=2, most_likely=5, pessimistic=10),
+        ),
+        Task(
+            task_id="Bug Fixes",
+            estimate=PertEstimate(optimistic=1, most_likely=3, pessimistic=7),
+        ),
+        Task(
+            task_id="User Acceptance",
+            estimate=PertEstimate(optimistic=1, most_likely=3, pessimistic=5),
+        ),
+        Task(
+            task_id="Deployment",
+            estimate=PertEstimate(optimistic=1, most_likely=2, pessimistic=4),
+        ),
+    ]
+
+
+@pytest.fixture
+def workflow_transitions() -> list[TaskTransition]:
+    """Transitions for the software development workflow."""
+    return [
+        TaskTransition(source="Requirements", target="Development", probability=1.0),
+        TaskTransition(source="Development", target="Code Review", probability=1.0),
+        TaskTransition(source="Code Review", target="Testing", probability=0.7),
+        TaskTransition(source="Code Review", target="Development", probability=0.3),
+        TaskTransition(source="Testing", target="User Acceptance", probability=0.6),
+        TaskTransition(source="Testing", target="Bug Fixes", probability=0.4),
+        TaskTransition(source="Bug Fixes", target="Testing", probability=1.0),
+        TaskTransition(source="User Acceptance", target="Deployment", probability=0.8),
+        TaskTransition(source="User Acceptance", target="Bug Fixes", probability=0.2),
     ]

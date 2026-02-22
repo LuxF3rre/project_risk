@@ -3,8 +3,13 @@
 import altair as alt
 import numpy as np
 
-from project_risk.charts import build_cdf, build_dag_dot, build_histogram
-from project_risk.models import PercentileResult, SimulationResult
+from project_risk.charts import (
+    build_cdf,
+    build_dag_dot,
+    build_histogram,
+    build_workflow_dot,
+)
+from project_risk.models import PercentileResult, SimulationResult, TaskTransition
 
 
 def _make_result() -> SimulationResult:
@@ -68,3 +73,66 @@ class TestBuildDagDot:
         )
         assert '"X"' in dot
         assert "red" not in dot
+
+
+class TestBuildWorkflowDot:
+    def test_basic_dot(self) -> None:
+        transitions = [
+            TaskTransition(source="A", target="B", probability=0.6),
+            TaskTransition(source="A", target="C", probability=0.4),
+        ]
+        dot = build_workflow_dot(
+            task_ids=["A", "B", "C"],
+            transitions=transitions,
+            start_nodes=["A"],
+        )
+        assert "digraph" in dot
+        assert '"A"' in dot
+        assert '"A" -> "B"' in dot
+
+    def test_start_node_colored_blue(self) -> None:
+        transitions = [
+            TaskTransition(source="A", target="B", probability=1.0),
+        ]
+        dot = build_workflow_dot(
+            task_ids=["A", "B"],
+            transitions=transitions,
+            start_nodes=["A"],
+        )
+        assert "4c78a8" in dot
+
+    def test_terminal_node_colored_green(self) -> None:
+        transitions = [
+            TaskTransition(source="A", target="B", probability=1.0),
+        ]
+        dot = build_workflow_dot(
+            task_ids=["A", "B"],
+            transitions=transitions,
+            start_nodes=["A"],
+        )
+        assert "59a14f" in dot
+
+    def test_probability_labels(self) -> None:
+        transitions = [
+            TaskTransition(source="A", target="B", probability=0.7),
+            TaskTransition(source="A", target="C", probability=0.3),
+        ]
+        dot = build_workflow_dot(
+            task_ids=["A", "B", "C"],
+            transitions=transitions,
+            start_nodes=["A"],
+        )
+        assert "70%" in dot
+        assert "30%" in dot
+
+    def test_regular_node_gray(self) -> None:
+        transitions = [
+            TaskTransition(source="A", target="B", probability=1.0),
+            TaskTransition(source="B", target="C", probability=1.0),
+        ]
+        dot = build_workflow_dot(
+            task_ids=["A", "B", "C"],
+            transitions=transitions,
+            start_nodes=["A"],
+        )
+        assert "e8e8e8" in dot

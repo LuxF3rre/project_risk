@@ -21,7 +21,7 @@ outcomes using **PERT distributions** and **Monte Carlo simulation**.
 
 st.divider()
 
-col1, col2, col3 = st.columns(3)
+col1, col2, col3, col4 = st.columns(4)
 
 with col1:
     st.subheader("Single Project")
@@ -50,3 +50,15 @@ with col3:
         "the *critical path* drives overall project duration."
     )
     st.page_link("pages/3_Task_DAG.py", label="Open Task DAG", icon="🔀")
+
+with col4:
+    st.subheader("Task Workflow")
+    st.markdown(
+        "Cyclic workflows with probabilistic transitions — model loops "
+        "like rework and retesting to see how they affect duration."
+    )
+    st.page_link(
+        "pages/4_Task_Workflow.py",
+        label="Open Task Workflow",
+        icon="🔄",
+    )

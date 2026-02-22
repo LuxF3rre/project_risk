@@ -11,6 +11,7 @@ from numpy.typing import NDArray
 __all__ = [
     "DEFAULT_ITERATIONS",
     "DEFAULT_LAMBDA",
+    "DEFAULT_MAX_STEPS",
     "STANDARD_PERCENTILES",
     "PercentileResult",
     "PertEstimate",
@@ -18,10 +19,13 @@ __all__ = [
     "SimulationResult",
     "Task",
     "TaskDependency",
+    "TaskTransition",
+    "WorkflowResult",
 ]
 
 DEFAULT_LAMBDA: Final = 4.0
 DEFAULT_ITERATIONS: Final = 10_000
+DEFAULT_MAX_STEPS: Final = 1000
 STANDARD_PERCENTILES: Final[tuple[float, ...]] = (5, 25, 50, 75, 95)
 
 
@@ -104,3 +108,31 @@ class SimulationResult:
     percentiles: tuple[PercentileResult, ...]
     mean: float
     std_dev: float
+
+
+@dataclass(frozen=True, slots=True)
+class TaskTransition:
+    """A probabilistic transition edge between two workflow tasks."""
+
+    source: str
+    target: str
+    probability: float
+
+    def __post_init__(self) -> None:
+        if self.source == self.target:
+            msg = f"self-loop not allowed: {self.source}"
+            raise ValueError(msg)
+        if not (0.0 < self.probability <= 1.0):
+            msg = f"probability must be in (0, 1], got {self.probability}"
+            raise ValueError(msg)
+
+
+@dataclass(frozen=True, slots=True)
+class WorkflowResult:
+    """Results from a cyclic workflow simulation."""
+
+    duration_result: SimulationResult
+    step_counts: NDArray[np.integer]
+    visit_counts: dict[str, NDArray[np.integer]]
+    visit_durations: dict[str, NDArray[np.floating]]
+    max_steps_hit_count: int

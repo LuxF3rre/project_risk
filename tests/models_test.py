@@ -6,6 +6,7 @@ import pytest
 from project_risk.models import (
     DEFAULT_ITERATIONS,
     DEFAULT_LAMBDA,
+    DEFAULT_MAX_STEPS,
     STANDARD_PERCENTILES,
     PercentileResult,
     PertEstimate,
@@ -13,6 +14,7 @@ from project_risk.models import (
     SimulationResult,
     Task,
     TaskDependency,
+    TaskTransition,
 )
 
 
@@ -122,6 +124,39 @@ class TestSimulationResult:
         assert sr.samples is samples
 
 
+class TestTaskTransition:
+    def test_valid_transition(self) -> None:
+        t = TaskTransition(source="A", target="B", probability=0.7)
+        assert t.source == "A"
+        assert t.target == "B"
+        assert t.probability == 0.7
+
+    def test_self_loop_raises(self) -> None:
+        with pytest.raises(ValueError, match="self-loop not allowed"):
+            TaskTransition(source="A", target="A", probability=0.5)
+
+    def test_probability_zero_raises(self) -> None:
+        with pytest.raises(ValueError, match="probability must be in"):
+            TaskTransition(source="A", target="B", probability=0.0)
+
+    def test_probability_negative_raises(self) -> None:
+        with pytest.raises(ValueError, match="probability must be in"):
+            TaskTransition(source="A", target="B", probability=-0.1)
+
+    def test_probability_above_one_raises(self) -> None:
+        with pytest.raises(ValueError, match="probability must be in"):
+            TaskTransition(source="A", target="B", probability=1.1)
+
+    def test_probability_one_valid(self) -> None:
+        t = TaskTransition(source="A", target="B", probability=1.0)
+        assert t.probability == 1.0
+
+    def test_frozen(self) -> None:
+        t = TaskTransition(source="A", target="B", probability=0.5)
+        with pytest.raises(AttributeError):
+            t.source = "C"  # type: ignore[misc]
+
+
 class TestConstants:
     def test_standard_percentiles(self) -> None:
         assert STANDARD_PERCENTILES == (5, 25, 50, 75, 95)
@@ -131,3 +166,6 @@ class TestConstants:
 
     def test_default_iterations(self) -> None:
         assert DEFAULT_ITERATIONS == 10_000
+
+    def test_default_max_steps(self) -> None:
+        assert DEFAULT_MAX_STEPS == 1000
