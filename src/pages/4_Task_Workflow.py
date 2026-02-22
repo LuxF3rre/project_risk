@@ -449,3 +449,10 @@ if "wf_result" in st.session_state:
     mcol1.metric("Mean Duration", f"{dur.mean:.2f}")
     mcol2.metric("Std Dev", f"{dur.std_dev:.2f}")
     mcol3.metric("Avg Steps", f"{step_result.mean:.1f}")
+
+st.divider()
+st.markdown(
+    "<div style='text-align: center'>Made with ❤ by Maurycy Blaszczak"
+    " (<a href='https://maurycyblaszczak.com/'>maurycyblaszczak.com</a>)</div>",
+    unsafe_allow_html=True,
+)
