@@ -5,12 +5,13 @@ from __future__ import annotations
 import altair as alt
 import pandas as pd
 
-from project_risk.models import SimulationResult
+from project_risk.models import SimulationResult, TaskTransition
 
 __all__ = [
     "build_cdf",
     "build_dag_dot",
     "build_histogram",
+    "build_workflow_dot",
 ]
 
 
@@ -118,6 +119,53 @@ def build_dag_dot(
             lines.append(f'    "{pred}" -> "{succ}" [color="red", penwidth=2.0];')
         else:
             lines.append(f'    "{pred}" -> "{succ}";')
+
+    lines.append("}")
+    return "\n".join(lines)
+
+
+def build_workflow_dot(
+    *,
+    task_ids: list[str],
+    transitions: list[TaskTransition],
+    start_nodes: list[str],
+) -> str:
+    """Generate a Graphviz DOT string for a workflow graph.
+
+    Args:
+        task_ids: List of task identifiers.
+        transitions: Probabilistic transition edges.
+        start_nodes: Starting nodes (colored blue).
+
+    Returns:
+        A DOT-language string with probability labels on edges.
+    """
+    start_set = set(start_nodes)
+    targets = {tr.target for tr in transitions}
+    sources = {tr.source for tr in transitions}
+    terminal_nodes = {tid for tid in task_ids if tid in targets and tid not in sources}
+    terminal_nodes |= {
+        tid for tid in task_ids if tid not in sources and tid not in targets
+    }
+    terminal_nodes -= start_set
+
+    lines = [
+        "digraph {",
+        "    rankdir=LR;",
+        "    node [shape=box, style=filled];",
+    ]
+
+    for tid in task_ids:
+        if tid in start_set:
+            lines.append(f'    "{tid}" [fillcolor="#4c78a8", fontcolor="white"];')
+        elif tid in terminal_nodes:
+            lines.append(f'    "{tid}" [fillcolor="#59a14f", fontcolor="white"];')
+        else:
+            lines.append(f'    "{tid}" [fillcolor="#e8e8e8"];')
+
+    for tr in transitions:
+        label = f"{tr.probability:.0%}"
+        lines.append(f'    "{tr.source}" -> "{tr.target}" [label="{label}"];')
 
     lines.append("}")
     return "\n".join(lines)
