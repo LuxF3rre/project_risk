@@ -207,3 +207,10 @@ if "tl_result" in st.session_state:
     mcol1, mcol2 = st.columns(2)
     mcol1.metric("Mean Total Duration", f"{result.mean:.2f}")
     mcol2.metric("Std Dev", f"{result.std_dev:.2f}")
+
+st.divider()
+st.markdown(
+    "<div style='text-align: center'>Made with ❤ by Maurycy Blaszczak"
+    " (<a href='https://maurycyblaszczak.com/'>maurycyblaszczak.com</a>)</div>",
+    unsafe_allow_html=True,
+)
