@@ -65,14 +65,14 @@ if "dag_data" not in st.session_state:
 if "dag_deps_data" not in st.session_state:
     st.session_state["dag_deps_data"] = EMPTY_DEPS
 
-load_col, clear_col, *_ = st.columns([2, 2, 6], gap="small")
-if load_col.button("Load Example"):
+load_col, clear_col, *_ = st.columns([3, 2, 5], gap="small")
+if load_col.button("Load Example", use_container_width=True):
     st.session_state["dag_data"] = EXAMPLE_TASKS.copy()
     st.session_state["dag_deps_data"] = EXAMPLE_DEPS.copy()
     st.session_state.pop("dag_result", None)
     st.session_state.pop("dag_run_inputs", None)
     st.rerun()
-if clear_col.button("Clear Data"):
+if clear_col.button("Clear Data", use_container_width=True):
     st.session_state["dag_data"] = EMPTY_TASKS.copy()
     st.session_state["dag_deps_data"] = EMPTY_DEPS.copy()
     st.session_state.pop("dag_result", None)

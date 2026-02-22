@@ -18,14 +18,18 @@ and the simulation will show you the full range of possible outcomes.
 """
 )
 
+# --- Defaults ---
+for _key in ("sp_optimistic", "sp_most_likely", "sp_pessimistic"):
+    st.session_state.setdefault(_key, 0.0)
+
 # --- Inputs ---
-load_col, clear_col, *_ = st.columns([2, 2, 6], gap="small")
-if load_col.button("Load Example"):
+load_col, clear_col, *_ = st.columns([3, 2, 5], gap="small")
+if load_col.button("Load Example", use_container_width=True):
     st.session_state["sp_optimistic"] = 5.0
     st.session_state["sp_most_likely"] = 10.0
     st.session_state["sp_pessimistic"] = 20.0
     st.rerun()
-if clear_col.button("Clear Data"):
+if clear_col.button("Clear Data", use_container_width=True):
     st.session_state["sp_optimistic"] = 0.0
     st.session_state["sp_most_likely"] = 0.0
     st.session_state["sp_pessimistic"] = 0.0
@@ -36,15 +40,15 @@ if clear_col.button("Clear Data"):
 col1, col2, col3 = st.columns(3)
 with col1:
     optimistic = st.number_input(
-        "Optimistic", min_value=0.0, value=0.0, step=0.5, key="sp_optimistic"
+        "Optimistic", min_value=0.0, step=0.5, key="sp_optimistic"
     )
 with col2:
     most_likely = st.number_input(
-        "Most Likely", min_value=0.0, value=0.0, step=0.5, key="sp_most_likely"
+        "Most Likely", min_value=0.0, step=0.5, key="sp_most_likely"
     )
 with col3:
     pessimistic = st.number_input(
-        "Pessimistic", min_value=0.0, value=0.0, step=0.5, key="sp_pessimistic"
+        "Pessimistic", min_value=0.0, step=0.5, key="sp_pessimistic"
     )
 
 # --- Sidebar config ---

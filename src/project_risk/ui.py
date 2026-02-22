@@ -7,11 +7,11 @@ import streamlit as st
 __all__ = ["sidebar_config"]
 
 
-def sidebar_config() -> tuple[int, int | None, float]:
+def sidebar_config() -> tuple[int, int, float]:
     """Render shared simulation settings in the sidebar.
 
     Returns:
-        Tuple of (iterations, seed_or_none, pert_lambda).
+        Tuple of (iterations, seed, pert_lambda).
     """
     st.sidebar.header("Simulation Settings")
 
@@ -38,16 +38,14 @@ the most likely estimate. Default is 4.
         step=1000,
     )
 
-    lock = st.sidebar.checkbox("Lock results (reproducible)")
-    seed: int | None = None
-    if lock:
-        seed_val = st.sidebar.number_input(
+    seed = int(
+        st.sidebar.number_input(
             "Seed",
             min_value=1,
             max_value=2**31 - 1,
             value=42,
         )
-        seed = int(seed_val)
+    )
 
     pert_lambda = float(
         st.sidebar.number_input(
