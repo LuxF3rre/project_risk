@@ -23,6 +23,8 @@ of possible outcomes.
   See how individual uncertainty compounds.
 - **Task DAG** — Tasks with dependencies and parallelism.
   Identifies the critical path driving overall duration.
+- **Task Workflow** — Cyclic probabilistic workflows with feedback loops.
+  Simulates random walks through graphs where tasks can repeat (e.g. rework, retesting).
 
 ## Quick Start
 
@@ -47,12 +49,14 @@ project_risk/
 │   ├── pages/
 │   │   ├── 1_Single_Project.py  # Single three-point estimate
 │   │   ├── 2_Task_List.py       # Sequential tasks
-│   │   └── 3_Task_DAG.py        # Task dependency graph
+│   │   ├── 3_Task_DAG.py        # Task dependency graph
+│   │   └── 4_Task_Workflow.py   # Cyclic probabilistic workflow
 │   └── project_risk/
 │       ├── models.py            # Domain models
 │       ├── pert.py              # PERT distribution sampling
 │       ├── monte_carlo.py       # Simulation orchestration
 │       ├── dag.py               # Graph algorithms
+│       ├── workflow.py          # Cyclic workflow simulation
 │       ├── charts.py            # Altair charts & Graphviz
 │       └── ui.py                # Shared sidebar config
 └── tests/                       # pytest suite
